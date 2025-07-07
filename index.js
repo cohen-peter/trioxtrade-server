@@ -1,4 +1,4 @@
-import "./cron.js";
+import "./cron.js"
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -18,7 +18,12 @@ app.use(express.urlencoded({ limit: "30mb", extended: true }));
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(morgan("common"));
-app.use(cors()); // configure orgin to use only frontend for deployment
+app.use(cors({
+  origin: [
+    "https://trioxtrade-client.vercel.app",
+    "http://localhost:5173"
+  ]
+})); // configure orgin to use only frontend for deployment
 // REMEMBER TO DO EMAIL VERIFICATION AND PASSWORD RESET
 
 /* ROUTES */
