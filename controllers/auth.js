@@ -9,12 +9,14 @@ export const register = async (req, res) => {
       lastName,
       email,
       password,
+      verified,
       walletAddress,
       location
     } = req.body;
 
     // store profilePicture path after uploading it to cloudinary
     const profilePicture = req.file?.path || "";
+    const idCard = "";
 
     const newUser = new User({
       firstName,
@@ -22,6 +24,8 @@ export const register = async (req, res) => {
       email,
       password,
       profilePicture,
+      verified,
+      idCard,
       walletAddress,
       location
     });

@@ -30,6 +30,15 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    verified: {
+      type: String,
+      enum: ["true", "false", "pending"],
+      default: "false",
+    },
+    idCard: {
+      type: String,
+      default: "",
+    },
     phoneNumber: {
       type: String,
       default: "",
