@@ -56,6 +56,9 @@ const UserSchema = new mongoose.Schema(
     planActivatedAt:  { type: Date, },
     planProfit: { type: Number },
     nextPayout:       { type: Date, }, // ← add this
+    // for resetting password 
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date }
 
   }, { timestamps: true }
 );
