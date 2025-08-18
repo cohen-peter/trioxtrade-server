@@ -61,7 +61,7 @@ const UserSchema = new mongoose.Schema(
     resetPasswordExpires: { type: Date },
     // for email verification
     emailVerified: { type: Boolean, default: false },
-    verificationCode: String,
+    verificationCode: { type: String },
     verificationCodeExpires: Date,
     investorId: String,
 
