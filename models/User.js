@@ -58,7 +58,12 @@ const UserSchema = new mongoose.Schema(
     nextPayout:       { type: Date, }, // ← add this
     // for resetting password 
     resetPasswordToken: { type: String },
-    resetPasswordExpires: { type: Date }
+    resetPasswordExpires: { type: Date },
+    // for email verification
+    emailVerified: { type: Boolean, default: false },
+    verificationCode: String,
+    verificationCodeExpires: Date,
+    investorId: String,
 
   }, { timestamps: true }
 );

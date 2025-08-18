@@ -12,6 +12,7 @@ export const register = async (req, res) => {
       email,
       password,
       verified,
+      emailVerified,
       walletAddress,
       location
     } = req.body;
@@ -20,8 +21,8 @@ export const register = async (req, res) => {
     const profilePicture = req.file?.path || "";
     const idCard = "";
 
-    // Generate investor ID
-    const investorId = "TRX" + Date.now().toString().slice(-6);
+    // Generate email verification code
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
 
     const newUser = new User({
       firstName,
@@ -30,8 +31,11 @@ export const register = async (req, res) => {
       password,
       profilePicture,
       verified,
+      emailVerified,
       idCard,
       walletAddress,
+      verificationCode,
+      verificationCodeExpires: Date.now() + 15 * 60 * 1000,
       location
     });
     
@@ -39,12 +43,52 @@ export const register = async (req, res) => {
     const returnUser = savedUser.toObject();
     delete returnUser.password;
 
-    // Send welcome email
+    // Send verification email
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Email — TRIOXTRADE",
+      html: `
+        <p>Hi ${firstName},</p>
+        <p>Welcome to <b>TRIOXTRADE</b> — before you can start investing, we need to verify your email address.</p>
+        <p>Your verification code is:</p>
+        <h2>${verificationCode}</h2>
+        <p>This code will expire in 15 minutes.</p>
+        <p>Enter this code in the verification page to complete your registration.</p>
+      `
+    });
+
+    res.status(201).json(returnUser);
+  } catch (err) {
+    if (err.code === 11000 && err.keyPattern?.email) {
+      return res.status(400).json({ msg: "Acccount with email already exists"});
+    }
+    res.status(500).json({ error: err.message })
+  }
+}
+
+// verify email
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    if (user.emailVerified) return res.status(400).json({ msg: "User already verified" });
+
+    if (user.verificationCode !== code || Date.now() > user.verificationCodeExpires) {
+      return res.status(400).json({ msg: "Invalid or expired verification code" });
+    }
+
+    // Generate investor ID
+    const investorId = "TRX" + Date.now().toString().slice(-6);
+
+    // Send welcome email AFTER successful verification
     await sendEmail({
       to: email,
       subject: "Welcome to TRIOXTRADE — Your Investor ID",
       html: `
-        <p>Hi ${firstName},</p>
+        <p>Hi ${user.firstName},</p>
         <p>Welcome to <b>TRIOXTRADE</b> — we’re excited to have you on board!</p>
         <p>Thank you for signing up. Your account has been successfully created, and you are now part of a growing global community of smart crypto investors.</p>
         <p><b>🔐 Your Investor ID:</b> ${investorId}</p>
@@ -64,15 +108,65 @@ export const register = async (req, res) => {
       `
     });
 
-    res.status(201).json(returnUser);
-  } catch (err) {
-    if (err.code === 11000 && err.keyPattern?.email) {
-      return res.status(400).json({ msg: "Acccount with email already exists"});
-    }
-    res.status(500).json({ error: err.message })
-  }
-}
+    // Mark verified
+    user.emailVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpires = undefined;
+    user.investorId = investorId;
+    await user.save();
 
+    res.status(200).json({ msg: "Email verified successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Resend verification code
+export const resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Account already verified' });
+    }
+
+    // Generate new 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationCode = code;
+    user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 mins from now
+
+    await user.save();
+
+    // Send verification email
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Email — TRIOXTRADE",
+      html: `
+        <p>Hi ${user.firstName},</p>
+        <p>Welcome to <b>TRIOXTRADE</b> — before you can start investing, we need to verify your email address.</p>
+        <p>Your verification code is:</p>
+        <h2>${code}</h2>
+        <p>This code will expire in 15 minutes.</p>
+        <p>Enter this code in the verification page to complete your registration.</p>
+      `
+    });
+
+    res.status(200).json({ message: 'Verification code resent successfully' });
+  } catch (error) {
+    console.error('Error in resendVerification:', error);
+    res.status(500).json({ message: 'Server error. Please try again.' });
+  }
+};
 
 /* LOGGING IN */
 export const login = async (req, res) => {
@@ -111,7 +205,7 @@ export const forgotPassword = async (req, res) => {
     await user.save();
 
     // Send email
-    const resetLink = `https://trioxtrade-client.vercel.app/reset-password/${resetToken}`;
+    const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
 
     await sendEmail({
       to: user.email,
