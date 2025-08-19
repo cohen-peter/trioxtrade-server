@@ -21,6 +21,7 @@ app.use(morgan("common"));
 app.use(cors({
   origin: [
     "https://trioxtrade-client.vercel.app",
+    "https://trioxtrade.com",
     "http://localhost:5173"
   ]
 })); // configure orgin to use only frontend for deployment
